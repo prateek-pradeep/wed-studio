@@ -6,7 +6,14 @@ const knex = require('knex');
 
 // BEFORE: Create mutler object
 const imageUpload = multer({
-    dest: 'images',
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, 'images/');
+        },
+        filename: function (req, file, cb) {
+            cb(null, new Date().valueOf() + '_' + file.originalname);
+        }
+    })
 });
 
 
@@ -52,29 +59,51 @@ app.use(morgan('dev'));
 
 // @TODO Add routes
 // Image Upload Routes
-app.post('/image', imageUpload.single('image'), (req, res) => {
-    const { filename, mimetype, size } = req.file;
-    const filepath = req.file.path;
+app.post('/image', imageUpload.array('image'), async (req, res) => {
+    const files = req.files;
+    console.log(req, 'req');
 
-    db
-        .insert({
-            filename,
-            filepath,
-            mimetype,
-            size,
+    try {
+        await Promise.all(files.map(async file => {
+            const { filename, mimetype, size } = file;
+            const filepath = file.path;
+            await db.insert({ filename, filepath, mimetype, size }).into('image_files');
+        }));
+        res.json({ success: true, files: files.map(file => file.filename) });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Upload failed', stack: err.stack });
+    }
+
+    /*Promise.all(files.map(async file => {
+        const { filename, mimetype, size } = file;
+        const filepath = file.path;
+
+        try {
+            await db.insert({
+                filename,
+                filepath,
+                mimetype,
+                size,
+            }).into('image_files');
+        } catch (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Upload failed',
+                stack: err.stack,
+            });
+        }
+
+    }))
+        .then(() => {
+            res.json({ success: true, files: files.map(files => file.filename) });
         })
-        .into('image_files')
-        .then(() => res.json({ success: true, filename }))
-        .catch(err => res
-            .json(
-                {
-                    success: false,
-                    message: 'upload failed',
-                    stack: err.stack,
-                }
-            )
-
-        );
+        .catch(err => {
+            res.status(500).json({
+                success: false,
+                message: 'Upload failed',
+                stack: err.stack,
+            });
+        });*/
 });
 
 // Image Get Routes
