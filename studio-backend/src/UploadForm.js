@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 
 const UploadForm = () => {
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFiles, setSelectedFile] = useState([]);
 
     const handleFileChange = (event) => {
-        setSelectedFile(event.target.files[0]);
+        setSelectedFile([...selectedFiles, ...event.target.files]);
     };
 
     const postData = async () => {
         const url = 'http://localhost:5001/image';
         const formData = new FormData();
-        formData.append('image', selectedFile);
+
+        selectedFiles.forEach((file, index) => {
+            formData.append(`image${index}`, file);
+        });
 
         try {
             const response = await fetch(url, {
@@ -36,8 +39,8 @@ const UploadForm = () => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <input type="file" onChange={handleFileChange} />
-            <button type="submit">Upload Image</button>
+            <input type="file" multiple onChange={handleFileChange} />
+            <button type="submit">Upload Images</button>
         </form>
     );
 };
